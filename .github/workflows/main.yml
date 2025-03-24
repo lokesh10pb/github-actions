@@ -31,10 +31,18 @@ jobs:
     - name: Build NPM Assets
       run: npm run build
 
+    # Setup SSH for deploying to EC2 using PEM file from GitHub Secrets
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
     - name: Synchronize Files To Server
       uses: easingthemes/ssh-deploy@v2.1.5
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
         SOURCE: "."
         REMOTE_HOST: ${{ secrets.VPS_HOST }}
         REMOTE_USER: ${{ secrets.VPS_USER }}
@@ -45,7 +53,7 @@ jobs:
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        key: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
         script: |
           cd /var/www/html/github-actions
           php artisan migrate --force
